@@ -24,11 +24,12 @@ pub fn day_one_run() -> std::io::Result<()>{
         if line.trim().is_empty() {
             calorie_counter.store_current_if_top_record();
             calorie_counter.current_calorie_count = 0;
+        } else { 
+            // Attempts to read calorie count as an integer, adds to calorie counter if so
+            let calories = line.trim().parse::<i32>().unwrap(); // panics if cannot read (some non-newline/numeric value)
+            calorie_counter.current_calorie_count += calories;
         }
 
-        // Attempts to read calorie count as an integer, adds to calorie counter if so
-        let calories = line.trim().parse::<i32>?; // panics if cannot read (some non-newline/numeric value)
-        calorie_counter.current_calorie_count += calories;
     }
 
     // Prints result
