@@ -1,9 +1,7 @@
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::fs::File;
 
-pub fn day_one_run() -> std::io::Result<()>{
-    println!("Running day 1.");
+use super::*;
+
+pub fn run() -> std::io::Result<()>{
 
     let f = File::open("input/day1input.txt")?;
     let reader = BufReader::new(f);
@@ -26,14 +24,14 @@ pub fn day_one_run() -> std::io::Result<()>{
             calorie_counter.current_calorie_count = 0;
         } else { 
             // Attempts to read calorie count as an integer, adds to calorie counter if so
-            let calories = line.trim().parse::<i32>().unwrap(); // panics if cannot read (some non-newline/numeric value)
+            let calories = line.trim().parse::<i32>().expect("Cannot read text file, contains non-numeric value."); // panics if cannot read (some non-newline/numeric value)
             calorie_counter.current_calorie_count += calories;
         }
 
     }
 
     // Prints result
-    println!("{}",calorie_counter.records_sum());
+    println!("Result for day 1 = {}",calorie_counter.records_sum());
     Ok(())
 }
 
