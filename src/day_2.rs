@@ -58,7 +58,7 @@ impl RPSChoice {
 }
 
 
-pub fn run() -> std::io::Result<()> {
+pub fn run(part_2: bool) -> std::io::Result<()> {
 
     let mut score = 0;
 
@@ -74,11 +74,17 @@ pub fn run() -> std::io::Result<()> {
         let opp_choice  = get_rps_choice(c.next().unwrap_or(" "));
 
         // Player choice depends on which Part of the challenge.
-        // Part 1 - XYZ is your choice.
-        // let player_choice = get_rps_choice(c.next().unwrap_or(" "));
-        // Part 2 - XYZ is the intended result, get player choice for that.
-        let player_choice = get_choice_for_desired_outcome(c.next().unwrap_or(" "), opp_choice);
+        let player_choice;
+        if part_2 {
+            // Part 2 - XYZ is the intended result, get player choice for that.
+            player_choice = get_choice_for_desired_outcome(c.next().unwrap_or(" "), opp_choice);
 
+        } else {
+            // Part 1 - 'XYZ' values represent *your* choice.
+            player_choice = get_rps_choice(c.next().unwrap_or(" "));
+        }
+
+        // Append score to running total
         score += score_round(player_choice, opp_choice);
     }
 
