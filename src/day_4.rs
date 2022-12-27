@@ -27,7 +27,7 @@ impl ElfPair {
         let (a_0, a_1) = unwrap_into_range(a)?;
         let (b_0, b_1) = unwrap_into_range(b)?;
 
-        if (b_1 < b_0 || a_1 < a_0){
+        if b_1 < b_0 || a_1 < a_0{
             return Err(Error::new(ErrorKind::Other, "The second value must be higher than the first in the given range."))
         }
 
@@ -85,11 +85,8 @@ pub fn run(part_2: bool) -> Result<(), Error> {
     for line in buf.lines() {
         let line = line?;
         let elfpair = ElfPair::new(&line)?;
-        dbg!(line);
         if (!part_2 && elfpair.check_encompass()) || (part_2 && elfpair.check_overlap() ) {
             counter += 1;
-            dbg!("true!");
-
         }
     }
 
