@@ -74,7 +74,7 @@ fn unwrap_into_range(s: &str) -> Result<(i32, i32), Error> {
 
 }
 
-pub fn run(part_2: bool) -> Result<(), Error> { 
+pub fn run(part_2: bool) -> Result<(), Box<dyn error::Error>> { 
     let mut counter = 0;
 
     let f = File::open("input/day4input.txt") ?;
@@ -89,7 +89,8 @@ pub fn run(part_2: bool) -> Result<(), Error> {
             counter += 1;
         }
     }
+    let part = if part_2 {2} else {1};
+    println!("Result for day 4-{part} = {counter}");
 
-    println!("Result for day 4 = {counter}");
     Ok(())
 }

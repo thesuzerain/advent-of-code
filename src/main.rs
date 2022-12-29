@@ -1,28 +1,45 @@
-mod day_1;
-mod day_2;
-mod day_3;
-mod day_4;
-mod day_5;
+use std::env;
+use std::env::Args;
+use std::process;
 use std::error;
+use std::io;
 
+fn main() {
+    let args = env::args();
+     
+    let specific_challenge = match parse_arguments(args) {
+       Ok(s) => s,
+       Err(e) => {
+            println!("Failed with error: {e}");
+            process::exit(1);
+        }
+    };
 
-use regex::Regex;
+    match advent_of_code::run_challenges(specific_challenge) {
+        Ok(()) => process::exit(0),
+        Err(e) => {
+            println!("Failed with error: {e}");
+            process::exit(1);
+        }
+    };
 
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::io::{Error, ErrorKind};
-use std::fs::File;
-
-fn main() -> std::io::Result<()>{
-    println!("Hello, world!");
-    day_1::run()?;
-    day_2::run(true)?;
-    day_3::run(true)?;
-    day_4::run(true)?;
-    day_5::run()?;
-
-    Ok(())
 }
 
 
+fn parse_arguments(mut args : Args) -> Result<usize, Box<dyn error::Error>> {
+    args.next(); // drop first file name argument
+    let args : Vec<String> = args.collect();
 
+    if args.len() > 1 {
+        let e = io::Error::new(io::ErrorKind::Other, "Unsupported number of arguments (0 or 1).");
+        return Err(Box::new(e));
+    }
+
+    // If no argument, specific_challenge = 0 as default (which is used by 'run_challenges' to mean 'all')
+    // If there is an argument, interpret it as a usize
+    if args.len() == 0 {
+        Ok(0)
+    } else {
+        Ok(args[0].parse::<usize>()? - 1)
+    }
+}

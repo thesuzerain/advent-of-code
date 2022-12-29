@@ -58,7 +58,7 @@ impl RPSChoice {
 }
 
 
-pub fn run(part_2: bool) -> std::io::Result<()> {
+pub fn run(part_2: bool) -> Result<(),Box<dyn error::Error>> {
 
     let mut score = 0;
 
@@ -88,7 +88,8 @@ pub fn run(part_2: bool) -> std::io::Result<()> {
         score += score_round(player_choice, opp_choice);
     }
 
-    println!("Result for day 2 = {score}");
+    let part = if part_2 {2} else {1};
+    println!("Result for day 2-{part} = {score}");
     Ok(())
 }
 

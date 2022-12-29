@@ -64,7 +64,7 @@ fn get_alphabet_chars_in_common(s1: &String, s2: &String) -> String {
 
 
 
-pub fn run(part_2: bool) -> std::io::Result<()> {
+pub fn run(part_2: bool) -> Result<(),Box<dyn error::Error>> {
 
     let mut priority_sum = 0;
 
@@ -101,7 +101,7 @@ pub fn run(part_2: bool) -> std::io::Result<()> {
             };
         }
     }
-
-    println!("Result for day 2 = {priority_sum}");
+    let part = if part_2 {2} else {1};
+    println!("Result for day 3-{part} = {priority_sum}");
     Ok(())
 }

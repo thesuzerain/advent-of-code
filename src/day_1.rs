@@ -1,7 +1,11 @@
 
-use super::*;
+// https://adventofcode.com/2022/day/1
+// Calorie counter.
+// Given a list of elves and the amount of calories they are carrying, return the highest total calorie count.
+// In part 2, return the sum of the top 3 highest calorie counts.
 
-pub fn run() -> std::io::Result<()>{
+use super::*;
+pub fn run(part_2: bool) -> Result<(), Box<dyn error::Error>>{
 
     let f = File::open("input/day1input.txt")?;
     let reader = BufReader::new(f);
@@ -31,7 +35,13 @@ pub fn run() -> std::io::Result<()>{
     }
 
     // Prints result
-    println!("Result for day 1 = {}",calorie_counter.records_sum());
+    // For part 1, prints highest collected calorie count
+    // For part 2, prints total of calorie counts being collected
+    if part_2 {
+        println!("Result for day 1-2 = {}",calorie_counter.records_sum());
+    } else {
+        println!("Result for day 1-1 = {}",calorie_counter.records_max());
+    }
     Ok(())
 }
 
@@ -44,8 +54,6 @@ struct CalorieCount {
 }
 
 impl CalorieCount {
-    
-
     // If current calorie score is higher any of the records, it replaces the lowest record
     fn store_current_if_top_record(&mut self) {
         let mut lowest_record_index = 0;
@@ -62,12 +70,15 @@ impl CalorieCount {
         }
     }
 
+    // Max of top_calorie_records array
+    // Returns 0 if array is empty
+    fn records_max(&self) -> i32 {
+        self.top_calorie_records.iter().max().copied().unwrap_or(0)
+    }
+    
     // Sum of top_calorie_records array
+    // Returns 0 if array is empty
     fn records_sum(&self) -> i32 {
-        let mut sum = 0;
-        for calorie_record in self.top_calorie_records.iter() {
-            sum += calorie_record;
-        }
-        sum
+        self.top_calorie_records.iter().sum()
     }
 }
