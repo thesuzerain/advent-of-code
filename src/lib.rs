@@ -5,6 +5,7 @@ mod day_3;
 mod day_4;
 mod day_5;
 mod day_6;
+mod day_7;
 use std::error;
 
 use regex::Regex;
@@ -23,6 +24,7 @@ pub fn run_challenges(specific_challenge: usize) -> Result<(), Box<dyn error::Er
         &day_4::run,
         &day_5::run,
         &day_6::run,
+        &day_7::run,
     ];
     
     if specific_challenge > 0 {

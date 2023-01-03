@@ -42,7 +42,6 @@ pub fn run(part_2: bool) ->Result<(), Box<dyn error::Error>> {
 // None if no such start_marker exists.
 fn get_start_marker(stream : &str, marker_length: usize) -> Option<usize> {
 
-    println!("Finding in {}",stream);
     // Initialize recency array to '0'- characters that won't appear again in the string
     let mut recents = Vec::new();
     recents.reserve(marker_length-1);
