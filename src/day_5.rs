@@ -9,6 +9,7 @@ use core::str;
 use std::fmt;
 use super::*;
 use super::Regex;
+use lazy_static::lazy_static;
 
 
 
@@ -39,20 +40,18 @@ impl Cargo {
     }
 
     fn parse_row(&mut self, row_str: &str) -> Result<(), Error> {
-        let re = Regex::new(r"(\w|\s\s\s\s)");
-        if let Ok(re) = re {
-            for (i,regmatch) in re.find_iter(row_str).into_iter().enumerate() {
-                match regmatch.as_str().chars().nth(0) {
-                    Some(' ') => (), // We need to match the whitespace to ensure stacks can be 'skipped' over
-                    Some(c) => self.stacks[i].push(c),
-                    None => ()
-                }
-            }
-            Ok(())
-        } else {
-            // Recreate Regex error as a 
-            return Err(Error::new(ErrorKind::Other, "Could not parse row in correct format."))
+        lazy_static! {
+            static ref REGEX_CAPTURE_STACKS: Regex = Regex::new(r"(\w|\s\s\s\s)").unwrap();
         }
+
+        for (i,regmatch) in REGEX_CAPTURE_STACKS.find_iter(row_str).into_iter().enumerate() {
+            match regmatch.as_str().chars().nth(0) {
+                Some(' ') => (), // We need to match the whitespace to ensure stacks can be 'skipped' over
+                Some(c) => self.stacks[i].push(c),
+                None => ()
+            }
+        }
+        Ok(())
     }
 
     fn move_top_item_between_stacks(&mut self, from_ind: usize, to_ind: usize) {
@@ -156,8 +155,11 @@ pub fn run(part_2: bool) -> Result<(), Box<dyn error::Error>> {
 
         // Use regex to match text to expetected challenge text
         let line = line?;
-        let re = Regex::new(r"move (\d+) from (\d+) to (\d+)").unwrap();
-        let caps = re.captures(&line).unwrap();  
+        
+        lazy_static! {
+            static ref REGEX_MOVE_FROM: Regex = Regex::new(r"move (\d+) from (\d+) to (\d+)").unwrap();
+        }
+        let caps = REGEX_MOVE_FROM.captures(&line).unwrap();  
         let item_move_count = caps.get(1).unwrap().as_str().parse().unwrap();
         let from_stack = caps.get(2).unwrap().as_str().parse::<usize>().unwrap() - 1;//stacks are one-indexed in .txt
         let to_stack = caps.get(3).unwrap().as_str().parse::<usize>().unwrap() - 1; //stacks are one-indexed in .txt
