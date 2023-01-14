@@ -47,7 +47,7 @@ pub fn run(part_2 : bool) -> Result<(), Box<dyn error::Error>> {
     let val = rope.get_unique_tail_visits();
 
     let part = if part_2 {2} else {1};
-    println!("Result for day 8-{part} = {val}");
+    println!("Result for day 9-{part} = {val}");
 
     Ok(())
 
@@ -115,7 +115,7 @@ impl RopeTracker {
     // Moves any tail nodes to follow head node if needed
     fn move_head(&mut self, direction: Direction) {
         
-        let mut head_node = self.rope_knots.get_mut(0).unwrap();
+        let head_node = self.rope_knots.get_mut(0).unwrap();
         let (dx, dy) = direction.get_uniform_delta_xy();
         *head_node = (head_node.0+dx, head_node.1+dy);
 
@@ -195,6 +195,7 @@ impl fmt::Display for RopeTrackerError {
     }
 }
 
+#[cfg(test)]
 mod tests {
 
     use super::*;

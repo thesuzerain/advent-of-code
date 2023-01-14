@@ -8,6 +8,7 @@ mod day_6;
 mod day_7;
 mod day_8;
 mod day_9;
+mod day_10;
 
 use std::error;
 
@@ -29,7 +30,8 @@ pub fn run_challenges(specific_challenge: usize) -> Result<(), Box<dyn error::Er
         &day_6::run,
         &day_7::run,
         &day_8::run,
-        &day_9::run
+        &day_9::run,
+        &day_10::run
     ];
     
     if specific_challenge > 0 {
