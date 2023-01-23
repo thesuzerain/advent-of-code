@@ -14,7 +14,7 @@ use super::*;
 // Tracks the unique positions of its tail node as it moves around a grid
 struct RopeTracker {
     rope_knots: Vec<(i32, i32)>, // coordinates of each knot in the rope. Must be at least length 1
-    tail_position_trail: Vec<(i32, i32)>
+    tail_position_trail: Vec<(i32, i32)> // accumulating vector of locations that the tail has visited
 }
 
 // Direction of travel around the grid
@@ -26,7 +26,8 @@ enum Direction {
     DOWN
 }
 
-// Run advent of code test.
+// Run challenge.
+// Main entry point to day 9 challenge.
 pub fn run(part_2 : bool) -> Result<(), Box<dyn error::Error>> {
 
     // Load input text into file buffer

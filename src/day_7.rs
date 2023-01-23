@@ -1,8 +1,8 @@
 // https://adventofcode.com/2022/day/7
-// No Space Left On Device.
-// Given a set of CLI commands (cd, ls, etc), recreate the file structure.
+// Day 7:  No Space Left On Device.
+// Given a set of CLI commands (cd, ls, etc), recreate the file structure of a hard drive with 70000000 units of free space.
 // In part 1, return the sum of all folder sizes that are less than 100000 (of arbitrary unit)
-// In part 2, find the smallest directory that frees up AT LEAST 
+// In part 2, find the smallest directory to delete that frees up a total of 30000000 units.
 
 use super::*;
 use std::{collections::{HashMap, hash_map::Entry}, rc::{Rc, Weak}, cell::RefCell, error, fmt};
@@ -13,6 +13,7 @@ use lazy_static::lazy_static;
 // It's a wrapper around a DirectoryEntry, which has  shared ownership and has interior mutability, 
 // so its parent folder can be accessed  and it can be modified while keeping its structure. 
 // Root directory should be kept in scope so that Weak reference to parents are not dropped.
+// DirectoryNode semantically represents a tree of files and folders, mimicking the structure of a hard drive.
 struct DirectoryNode (Rc<RefCell<DirectoryEntry>>);
 type ParentAlias = Weak<RefCell<DirectoryEntry>>;
 
@@ -22,7 +23,7 @@ enum DirectoryEntry {
     File(Option<ParentAlias>, u32) // Weak ref to parent node, and file size
 }
 
-// A tpye of file navigation command
+// A type of file navigation command
 enum ParsedCommand {
     CdIntoFolder(String), // Navigate into subfolder (by String representing the folder name)
     CdOutOfFolder, // navigate to parent
@@ -30,9 +31,68 @@ enum ParsedCommand {
     Ls(Vec::<String>), // Add listed entries (in Vec) to structure
 }
 
+// Simulated computer information
+const TOTAL_SPACE : u32 = 70000000; 
+const SPACE_REQUIRED_FOR_UPDATE : u32 = 30000000; 
+
+// Run challenge.
+// Main entry point to day 7 challenge.
+pub fn run(part_2 : bool) -> Result<(),Box<dyn error::Error>>{
+    
+    // Extract input into string (newlines kept)
+    let f = File::open("input/day7input.txt")?;
+    let mut buf = BufReader::new(f);
+
+    let mut input = String::new();
+    buf.read_to_string(&mut input)?;
+
+    // Split input into commands along the '$' marker
+    let commands : Vec<Result<ParsedCommand, regex::Error>> = input.trim().split('$').filter(|l| l.len() > 0).map(
+        |l| {
+            ParsedCommand::from_line(l)
+    }).collect();
+
+    // Create file structure root
+    let root = DirectoryNode::new();
+
+    // Create Rc strong reference to root to perform commands on (keep original root
+    // in scope so parent references don't get dropped)
+    let mut current_node = root.rc_clone();
+
+    // Iterate over each command and apply it to the current node
+    for command in commands {
+        let command = command?;
+        current_node = current_node.command(command)?;
+    }
+
+    let part = if part_2 {2} else {1};
+
+    let size_val;
+    if part_2 {
+
+        // Part 2:
+        // Calculate minimum folder deletion size to free up enough space for update
+        let free_space = TOTAL_SPACE - root.calculate_size();
+        let min_deletion_size = SPACE_REQUIRED_FOR_UPDATE - free_space;
+
+        // Fetch size of smallest directory over minimum deletion size
+        size_val = root.smallest_directory_size_over_min(min_deletion_size).unwrap();
+    } else  {
+        // Part 1:
+        // Fetch sum of directory sizes for directories under 100000 units
+        size_val = root.sum_directory_sizes_under_max(100000);
+    }
+
+    println!("Result for day 7-{part} = {size_val}");
+    Ok(())
+}
+
+
+
+
 impl DirectoryNode {
 
-    // Create new empty root node. This should be kept in scope.
+    // Create new empty root node. This should be kept in scope to ensure no nodes are dropped.
     fn new() -> DirectoryNode {
         DirectoryNode(Rc::new(RefCell::new(DirectoryEntry::Folder(None, HashMap::new()))))
     }
@@ -40,11 +100,14 @@ impl DirectoryNode {
     // Add subfile to node, accessible via key 'name' and of of name String and size 'size'
     fn add_subfile(&self, name: String, size: u32) {
 
+        // Get weak reference to parent node
         let weak_parent = Rc::downgrade( &Rc::clone(&self.0));
         
+        // Get shared reference to current entry
         let entry = &Rc::clone(&self.0);
         let mut entry = entry.borrow_mut();
 
+        // Insert subfile as child of current entry
         if let DirectoryEntry::Folder(_,ref mut children) = *entry {
             children.entry(name).or_insert(DirectoryNode(Rc::new(RefCell::new(DirectoryEntry::File(Some(weak_parent), size)))));
         }
@@ -52,31 +115,39 @@ impl DirectoryNode {
 
     // Add subfolder to node, accessible via key 'name' and with empty children HashMap
     fn add_subfolder(&self, name: String) {
+        // Get weak reference to parent node
         let weak_parent = Rc::downgrade( &Rc::clone(&self.0));
         
+        // Get shared reference to current entry
         let entry = &Rc::clone(&self.0);
         let mut entry = entry.borrow_mut();
 
+        // Insert subfolder as child of current entry
         if let DirectoryEntry::Folder(_, ref mut children) = *entry {
             children.entry(name).or_insert(DirectoryNode(Rc::new(RefCell::new(DirectoryEntry::Folder(Some(weak_parent), HashMap::new())))));
         }
     }
 
-    // Calculates node size. If a file, returns file size, and if a folder, returns all file sizes within folder recursively.
+    // Calculates node total size. 
+    // If a file, returns file size, and if a folder, returns all file sizes within folder and subfolderes recursively.
     fn calculate_size(&self) -> u32 {
         let (_,size) = self.get_all_directory_sizes();
         size
     }
 
 
-    // Get a list of all directory sizes, and the size of this directory or file
-    // (does not include file sizes as list members, but directory sizes are recursive sum of all files within)
+    // Get a tuple of:
+    // - a Vector of of all directory sizes
+    // - the size of this topmost directory or file
+    // (This does not include file sizes as elements, only directories, but directory sizes are recursive sum of all files within)
     fn get_all_directory_sizes(&self) -> (Vec<u32>, u32) {
+
+        // Get shared reference to current entry
         let entry = &Rc::clone(&self.0);
         let mut entry = entry.borrow_mut();
 
         match *entry {
-            // If a file, return base case
+            // If a file, return base case of current file size
             DirectoryEntry::File(_,i) => (Vec::new(),i),
 
             // If folder, get a Vec of all subdirectory sizes contained within
@@ -102,15 +173,13 @@ impl DirectoryNode {
     }
 
     // Gets sum of all directory sizes with size under 'maximum_size' 
-    // (directories *and* their subdirectories are counted, meaning files can be counted many times)
+    // (directories and their subdirectories are counted, meaning files can be counted many times)
     fn sum_directory_sizes_under_max(&self, maximum_size : u32) -> u32 {
         let (size_list, _) = self.get_all_directory_sizes();
         size_list.iter().filter(|x| **x < maximum_size).copied().sum()
     }
 
-
-
-    // Creates a new DirectoyNode instance with shared ownership of internal DirectoryEntry
+    // Creates a new DirectoryNode instance with shared ownership of member DirectoryEntry
     fn rc_clone(&self) -> DirectoryNode {
         DirectoryNode(Rc::clone(&self.0))
     }
@@ -118,28 +187,38 @@ impl DirectoryNode {
     // Retrieves new DirectoryNode of child folder by key 'name'
     // New DirectoryNode has shared ownership of internal DirectoryEntry
     fn get_subfolder(&self, name : String) -> Result<DirectoryNode,Box<dyn error::Error>> {
+
+        // Get shared reference to current entry
         let entry = &Rc::clone(&self.0);
         let mut entry = entry.borrow_mut();
 
+
+        // Confirms this is a folder with subfiles/subfolders and gets reference to 'children' hashmap
         if let DirectoryEntry::Folder(_, ref mut children) = *entry {
+
+            // Searches 'children' for child by name 'name'
             if let Entry::Occupied(subfolder) = children.entry(name) {
                 Ok(subfolder.get().rc_clone())
             } else {
-                Err(Box::new(DirectoryEntryNotExistError))
+                Err(Box::new(DirectoryEntryNotExistError)) // could not find child by that name
             }
         } else {
-            Err(Box::new(DirectoryEntryTypeError))
+            Err(Box::new(DirectoryEntryTypeError)) // cannot search for subfolders of a file
         }
     }
 
     // Retrieves new DirectoryNode of child folder by key 'name'
     // New DirectoryNode has shared ownership of internal DirectoryEntry
     fn get_parent(&self) -> Option<DirectoryNode> {
+
+        // Get shared reference to current entry
         let entry = &Rc::clone(&self.0);
         let mut entry = entry.borrow_mut();
 
+        // Retrieves reference to parent from current entry
         let (DirectoryEntry::Folder(ref mut parent, _) | DirectoryEntry::File(ref mut parent, _)) =  *entry;
         
+        // If parent exists and has not been dropped, get parent as node
         if let Some(p) = parent {
             if let Some(p) = p.upgrade() {
                 return Some(DirectoryNode(p))
@@ -159,9 +238,9 @@ impl DirectoryNode {
     }
 
     // Creates a folder or file within Node based on line 'line'
-    // Either by f ormat:
-    // "dir name" where name is the name
-    // "filesize name", where filesize is the size and name is the name
+    // Line is of one of two formats:
+    // "dir name" where name is the name, representing a folder/directory
+    // "filesize name", where filesize is the size and name is the name, representing a file.
     fn parse_line_to_directoryentry(& self, line: &str) -> Result<(), regex::Error> {
 
         let line = line.trim();
@@ -188,7 +267,9 @@ impl DirectoryNode {
                 return Ok(());
             } 
         }
-        Err(regex::Error::Syntax(format!("could not directoryentry to any regex syntax: {}",line)))
+
+        // Could not match command to file format or folder format
+        Err(regex::Error::Syntax(format!("could not match DirectoryEntry to any regex syntax: {}",line)))
         
     }
 
@@ -291,60 +372,10 @@ impl fmt::Display for DirectoryEntryNotExistError {
     }
 }
 
-
-pub fn run(part_2 : bool) -> Result<(),Box<dyn error::Error>>{
-    
-    // Extract input into string (newlines kept)
-    let f = File::open("input/day7input.txt")?;
-    let mut buf = BufReader::new(f);
-
-    let mut input = String::new();
-    buf.read_to_string(&mut input)?;
-
-    // Split input into commands along the '$' marker
-    let commands : Vec<Result<ParsedCommand, regex::Error>> = input.trim().split('$').filter(|l| l.len() > 0).map(
-        |l| {
-            ParsedCommand::from_line(l)
-    }).collect();
-
-    // Create file structure root
-    let root = DirectoryNode::new();
-
-    // Create Rc strong reference to root to perform commands on (we keep original root
-    // in scope so parent references don't get dropped)
-    let mut current_node = root.rc_clone();
-
-    // Iterate over each command and apply it to the current node
-    for command in commands {
-        let command = command?;
-        current_node = current_node.command(command)?;
-    }
-
-    let part = if part_2 {2} else {1};
-
-    let size_val;
-    if part_2 {
-        let total_space = 70000000; 
-        let space_needed = 30000000;
-        let free_space = total_space - root.calculate_size();
-        let min_deletion_size = space_needed - free_space;
-        size_val = root.smallest_directory_size_over_min(min_deletion_size).unwrap();
-    } else  {
-        size_val = root.sum_directory_sizes_under_max(100000);
-    }
-
-    println!("Result for day 7-{part} = {size_val}");
-
-    Ok(())
-}
-
-
-
 #[cfg(test)] 
 mod tests {
 
     use super::*;
-
 
     #[test]
     fn smallest_folder_over_minimum() {
@@ -381,13 +412,13 @@ mod tests {
         folder_3.add_subfile("file_3_1".to_string(), 5);
         folder_3.add_subfile("file_3_2".to_string(), 5);
 
-        assert_eq!(root.calculate_size(), 2235);
 
-        assert_eq!(root.sum_directory_sizes_under_max(650), 10);
-        assert_eq!(root.sum_directory_sizes_under_max(1500), 10 + 1025 + 10+1025+100+350);
-        assert_eq!(root.sum_directory_sizes_under_max(99), 10);
-
-        assert_eq!(root.smallest_directory_size_over_min(6).unwrap(), 10);
+        // Sanity traits about sample directory
+        assert_eq!(root.calculate_size(), 2235); // size is 2235
+        assert_eq!(root.sum_directory_sizes_under_max(650), 10); // Total size under 650 is 10
+        assert_eq!(root.sum_directory_sizes_under_max(1500), 10 + 1025 + 10+1025+100+350); 
+        assert_eq!(root.sum_directory_sizes_under_max(99), 10); 
+        assert_eq!(root.smallest_directory_size_over_min(6).unwrap(), 10); // Smallest diretory over minimum 6 is 10
         assert_eq!(root.smallest_directory_size_over_min(400).unwrap(), 1025);
         assert_eq!(root.smallest_directory_size_over_min(4).unwrap(), 10);
 
@@ -443,6 +474,9 @@ mod tests {
 
     #[test]
     fn parse_run_commands() {
+        // Tests parsing of commands and running those commands to ensure final filesystem is as expected and 
+        // recreateable from string commands.
+
         // Create root directory with two example files in it from challenge
         let root_original = DirectoryNode::new();
 

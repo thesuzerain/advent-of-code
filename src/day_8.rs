@@ -1,5 +1,5 @@
 // https://adventofcode.com/2022/day/8
-// Treetop Tree House.
+// Day 8: Treetop Tree House.
 // Given a text matrix of digits representing a forest of tree heights ,calculate the following values:
 // In part 1, the number of trees visible from outside the forest (from any angle)
 // In part 2, find the highest scenic index of any tree in the forest (the number of trees it can see from the top of that tree)
@@ -8,13 +8,52 @@ use std::{fmt, cmp};
 
 use super::*;
 
-
 // A simplified struct to hold a Matrix with two views of the same data: horizontal and vertical
-// (There are crates to do this better and easier but I wanted a simple self-contained implementation)
+// (There are crates to do this better and easier but I wanted a  self-contained implementation)
 struct Matrix {
     horizontal_view : Vec<Vec<i32>>, //horizontal view
     vertical_view : Vec<Vec<i32>>, //vertical view
 }
+
+// A VantageTracker is a helper object to identify the scenic vantage of any particular tree along an axis
+// It is usable on a matrix of trees to identify how many trees along a certain direction can this tree see (a tree can see until it is blocked by a tree of equal or greater height)
+// Sweep along an matrix axis and use 'check_tree' on each tree 't' to both record tree 't' as potentially visible, and return the 
+// number of trees 't' can see along that axis + direction.
+struct VantageTracker {
+    distance_to_tree_of_height: [i32; 10] // tracked using a array of distance since a tree of a certain height
+}
+
+// Run challenge.
+// Main entry point to day 8 challenge.
+pub fn run(part_2 : bool) -> Result<(), Box<dyn error::Error> > {
+
+    // Loads matrix from file and reads to string
+    let f = File::open("input/day8input.txt")?;
+    let mut buf = BufReader::new(f);
+
+    
+    let mut s : String = String::new();
+    buf.read_to_string(&mut s)?;
+
+    // Creates Matrix struct out of string slice
+    let mat = Matrix::parse(&s)?;
+
+    // Part 1 - gets number of visible trees from the outside of the forest.
+    // Part 2- gets highest 'scenic value': for a given tree, the product of the number of trees it can see in each direction.
+    let val;
+    if part_2 {
+         val = scenic_score_calculator(&mat);
+    } else {
+        let visible_trees = visible_count(&mat)?; 
+        val = visible_trees;    
+    }
+
+    let part = if part_2 {2} else {1};
+    println!("Result for day 8-{part} = {val}");
+
+    Ok(())
+}
+
 
 impl Matrix {
     // Parses a formatted matrix of text digits to a matrix of said  digits (as i32)
@@ -29,7 +68,7 @@ impl Matrix {
         let mut horizontal_view : Vec<Vec<i32>> = Vec::new();
         let mut vertical_view : Vec<Vec<i32>> = Vec::new();
 
-        // Splits into rows and creates 
+        // Splits into rows and creates matrix
         let rows : Vec<&str> = mat.split('\n').collect();
         let num_rows = rows.len();
         let mut num_columns = 0; // placeholder value
@@ -71,26 +110,27 @@ impl Matrix {
 
 }
 
+impl VantageTracker {
 
-#[derive(Clone, Debug)]
-struct MismatchedMatrixError;
-impl error::Error for MismatchedMatrixError {}
-impl fmt::Display for MismatchedMatrixError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,"matrix has inconsistent number of columns and rows")
+    // Create a new Vantage tracker, with accumulator 'distance_to_tree_of_height' empty
+    fn new() -> VantageTracker {
+        VantageTracker { 
+            distance_to_tree_of_height: [0; 10] // [i] -> how many trees since a tree of AT MOST height i
+         }
+    }
+
+    // Returns how many visible trees by a tree of height 'height'
+    // Adds this tree to the list of trees for the next one
+    fn check_tree(&mut self, height: usize) -> i32 {
+        let trees_can_see = self.distance_to_tree_of_height[height];
+        for i in 0..10 {
+            // Reset all distances up to and including 'height' 
+            // (as all of them would block the view)
+            self.distance_to_tree_of_height[i] = if i <= height {1} else {self.distance_to_tree_of_height[i] + 1};
+        }
+        trees_can_see
     }
 }
-
-#[derive(Clone, Debug)]
-struct ParseHeightError { c: char}
-impl error::Error for ParseHeightError {}
-impl fmt::Display for ParseHeightError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,"could not parse char as single-digit height: {}",self.c)
-    }
-}
-
-
 
 // Returns all tree heights visible from either end of a row of tree heights
 // A tree is not visible from a side if the height is not greater than every height preceding it
@@ -144,35 +184,6 @@ fn visible_count(matrix : &Matrix) -> Result<i32, MismatchedMatrixError> {
 }
 
 
-// A VantageTracker is a helper object to identify the scenic vantage of any particular tree along an axis
-// How many trees along a certain direction can this tree see (if their view is not blocked by a tree of equal or greater height)
-// Sweep along an axis and use 'check_tree' on each tree 't' to both record tree 't' as potentially visible, and return the 
-// number of trees 't' can see along that axis + direction.
-struct VantageTracker {
-    distance_to_tree_of_height: [i32; 10] // tracked using a array of distance since a tree of a certain height
-}
-
-impl VantageTracker {
-
-    fn new() -> VantageTracker {
-        VantageTracker { 
-            distance_to_tree_of_height: [0; 10] // [i] -> how many trees since a tree of AT MOST height i
-         }
-    }
-
-    // Returns how many visible trees by a tree of height 'height'
-    // Adds this tree to the list of trees for the next one
-    fn check_tree(&mut self, height: usize) -> i32 {
-        let trees_can_see = self.distance_to_tree_of_height[height];
-        for i in 0..10 {
-            // Reset all distances up to and including 'height' 
-            // (as all of them would block the view)
-            self.distance_to_tree_of_height[i] = if i <= height {1} else {self.distance_to_tree_of_height[i] + 1};
-        }
-        trees_can_see
-    }
-}
-
 // Get scenic matrix along a direction + axis
 // Each element [i][j] is how many trees are visible by tree at position [i][j] along a certain axis
 fn get_directional_scene_matrix(matrix_view : &Vec<Vec<i32>>, reverse : bool ) -> Vec<Vec<i32>> {
@@ -221,50 +232,32 @@ fn scenic_score_calculator(matrix: &Matrix) -> i32 {
     best_score 
 }
 
-
-
-
-
-pub fn run(part_2 : bool) -> Result<(), Box<dyn error::Error> > {
-
-    // Loads matrix from file and reads to string
-    let f = File::open("input/day8input.txt")?;
-    let mut buf = BufReader::new(f);
-
-    let mut s : String = String::new();
-    buf.read_to_string(&mut s)?;
-
-    // Creates Matrix struct out of string slice
-    let mat = Matrix::parse(&s)?;
-
-    // Part 1 - gets number of visible trees from the outside of the forest.
-    // Part 2- gets highest 'scenic value': for a given tree, the product of the number of trees it can see in each direction.
-    let val;
-    if part_2 {
-         val = scenic_score_calculator(&mat);
-    } else {
-        let visible_trees = visible_count(&mat)?; 
-        val = visible_trees;    
+#[derive(Clone, Debug)]
+struct MismatchedMatrixError;
+impl error::Error for MismatchedMatrixError {}
+impl fmt::Display for MismatchedMatrixError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,"matrix has inconsistent number of columns and rows")
     }
+}
 
-    let part = if part_2 {2} else {1};
-    println!("Result for day 8-{part} = {val}");
-
-    Ok(())
+#[derive(Clone, Debug)]
+struct ParseHeightError { c: char}
+impl error::Error for ParseHeightError {}
+impl fmt::Display for ParseHeightError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,"could not parse char as single-digit height: {}",self.c)
+    }
 }
 
 
 #[cfg(test)]
 mod tests {
-
-
     use super::*;
-
 
     #[test]
     fn try_parse_matrix() {
-
-        // Test parsing of an example matrix
+        // Test parsing of an example matrix in string format to Matrix 
         let mat_str = 
             "52441982103210
              51339282103210
@@ -282,7 +275,7 @@ mod tests {
     #[test]
     fn try_get_visible_heights() {
         // Create parsed matrices and confirm the number of visible trees from the outside are correct
-        // commented binary matrices represent whether the corresponding tree is visible
+        // Provided comment binary matrices[i,j] represent whether the corresponding tree at [i,j] is visible
 
         let mat_str = 
             "11111";
@@ -385,6 +378,8 @@ mod tests {
         assert_eq!(vantage_tracker.check_tree(8),1);
         assert_eq!(vantage_tracker.check_tree(9),2);
 
+        // Creates a simple matrix of 1 row and confirms that the 'get_directional_scene_matrix' function
+        // (which uses VantageTracker) correclty returns the scene matrix.
         let simple_matrix = vec![vec![1,1,1,2,3,3,4,0,1,2,9,8,9]];
         let simple_matrix_scene = vec![vec![0,1,1,3,4,1,6,1,2,3,10,1,2]];
         let simple_matrix_scene_reverse = vec![vec![1,1,1,1,1,1,4,1,1,1,2,1,0]];

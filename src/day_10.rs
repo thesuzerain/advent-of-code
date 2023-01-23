@@ -6,9 +6,11 @@
 // matches the cycle count on a given cycle, print a pixel on a screen.
 
 use super::*;
-use std::{fmt, ops::Index};
+use std::fmt;
 use lazy_static::lazy_static;
 
+// Run challenge.
+// Main entry point to day 10 challenge.
 pub fn run (part_2 : bool) -> Result<(),Box<dyn error::Error>> {
 
     // Load input text into file buffer
@@ -101,10 +103,10 @@ impl CPU {
         }
 
         // Regex capture for 'noop' command
-        if let Some(cap) = REGEX_NOOP.captures(line) {
+        if REGEX_NOOP.is_match(line) {
             self.run_command(CPUCommand::Noop);         
             return Ok(());
-   
+
         }
 
         // No commands matched

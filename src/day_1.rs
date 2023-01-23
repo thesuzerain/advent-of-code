@@ -1,16 +1,25 @@
 
 // https://adventofcode.com/2022/day/1
 // Calorie counter.
-// Given a list of elves and the amount of calories they are carrying, return the highest total calorie count.
-// In part 2, return the sum of the top 3 highest calorie counts.
+// Given an input list of elves and sequential integers of how many 'calories' each is carrying, return the highest total calorie count.
+// In part 2, return the sum of the top 3 highest calorie totals.
 
 use super::*;
+
+// CalorieCounter struct for accumulating over list of calorie counts
+struct CalorieCount {
+    current_calorie_count: i32, // current elf's calorie total
+    top_calorie_records: [i32; 3], // highest 3 calorie counts found so far, unordered
+}
+
+// Run challenge.
+// Main entry point to day 1 challenge.
 pub fn run(part_2: bool) -> Result<(), Box<dyn error::Error>>{
 
     let f = File::open("input/day1input.txt")?;
     let reader = BufReader::new(f);
 
-    // Create a new calorie counter to parse the file
+    // Create a new calorie counter
     let mut calorie_counter = CalorieCount {
         current_calorie_count: 0,
         top_calorie_records: [0, 0, 0],
@@ -34,7 +43,6 @@ pub fn run(part_2: bool) -> Result<(), Box<dyn error::Error>>{
 
     }
 
-    // Prints result
     // For part 1, prints highest collected calorie count
     // For part 2, prints total of calorie counts being collected
     if part_2 {
@@ -43,14 +51,6 @@ pub fn run(part_2: bool) -> Result<(), Box<dyn error::Error>>{
         println!("Result for day 1-1 = {}",calorie_counter.records_max());
     }
     Ok(())
-}
-
-
-// Calorie counter for iterating through list of calorie-counts
-// Maintains a record of highest 3 found so far
-struct CalorieCount {
-    current_calorie_count: i32, // current elf's calorie total
-    top_calorie_records: [i32; 3], // highest 3 calorie counts found so far, unordered
 }
 
 impl CalorieCount {
